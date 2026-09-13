@@ -19,26 +19,33 @@
     * { box-sizing: border-box; }
 
     html, body {
-      height: 100%;
       margin: 0;
       background: #0a0a0a;
+      overflow-x: hidden;
       font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
-    .bg-video {
+    /* Extra document height is what gives the background room to pan; it holds no visible content. */
+    .scroll-space {
+      height: 180vh;
+    }
+
+    .bg-image {
       position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      width: auto;
+      max-width: none;
       z-index: 0;
       background: #0a0a0a;
+      will-change: transform;
     }
 
     main {
-      position: relative;
+      position: fixed;
+      inset: 0;
       z-index: 1;
-      min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -146,15 +153,11 @@
   </style>
 </head>
 <body>
-  <video
-    class="bg-video"
-    id="bgVideo"
-    src="assets/bg.mp4"
-    autoplay
-    muted
-    playsinline
-    preload="auto"
-  ></video>
+  <img
+    class="bg-image"
+    src="assets/bg.jpg"
+    alt=""
+  />
 
   <main>
     <div class="panel">
@@ -181,43 +184,26 @@
     </div>
   </main>
 
+  <div class="scroll-space"></div>
+
   <script>
     (function () {
-      var video = document.getElementById('bgVideo');
-      var RATE = 0.5;        // slow-motion factor
-      var direction = 1;     // 1 = forward, -1 = reverse
-      var lastTs = null;
-      var duration = null;
+      var img = document.querySelector('.bg-image');
 
-      function tick(ts) {
-        if (lastTs !== null) {
-          var dt = (ts - lastTs) / 1000;
-          var next = video.currentTime + direction * dt * RATE;
-
-          if (next >= duration) {
-            next = duration - (next - duration);
-            direction = -1;
-          } else if (next <= 0) {
-            next = -next;
-            direction = 1;
-          }
-
-          video.currentTime = Math.min(duration, Math.max(0, next));
-        }
-        lastTs = ts;
-        requestAnimationFrame(tick);
+      function pan() {
+        var docMax = document.documentElement.scrollHeight - window.innerHeight;
+        var progress = docMax > 0 ? Math.min(1, Math.max(0, window.scrollY / docMax)) : 0;
+        var overflow = Math.max(0, img.offsetWidth - window.innerWidth);
+        img.style.transform = 'translateX(' + (-progress * overflow) + 'px)';
       }
 
-      function start() {
-        duration = video.duration;
-        video.pause(); // drive playback manually for a seamless ping-pong loop
-        requestAnimationFrame(tick);
-      }
+      window.addEventListener('scroll', pan, { passive: true });
+      window.addEventListener('resize', pan);
 
-      if (video.readyState >= 1) {
-        start();
+      if (img.complete) {
+        pan();
       } else {
-        video.addEventListener('loadedmetadata', start, { once: true });
+        img.addEventListener('load', pan, { once: true });
       }
     })();
   </script>
