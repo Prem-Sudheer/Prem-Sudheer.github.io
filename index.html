@@ -30,16 +30,21 @@
       height: 180vh;
     }
 
-    .bg-image {
+    .bg-frame {
       position: fixed;
-      top: 0;
-      left: 0;
-      height: 100vh;
-      width: auto;
-      max-width: none;
+      inset: 0;
+      overflow: hidden;
       z-index: 0;
       background: #0a0a0a;
+    }
+
+    .bg-image {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      max-width: none;
       will-change: transform;
+      transform: translateY(-50%);
     }
 
     main {
@@ -153,11 +158,14 @@
   </style>
 </head>
 <body>
-  <img
-    class="bg-image"
-    src="assets/bg.jpg"
-    alt=""
-  />
+  <div class="bg-frame">
+    <img
+      class="bg-image"
+      id="bgImage"
+      src="assets/bg.jpg"
+      alt=""
+    />
+  </div>
 
   <main>
     <div class="panel">
@@ -188,22 +196,45 @@
 
   <script>
     (function () {
-      var img = document.querySelector('.bg-image');
+      var img = document.getElementById('bgImage');
+      var PAN_FACTOR = 1.35; // how much wider than the viewport the image is sized, i.e. how much room it has to pan
+      var overflowX = 0;
+
+      function layout() {
+        if (!img.naturalWidth) return;
+        var vw = window.innerWidth;
+        var vh = window.innerHeight;
+        var ratio = img.naturalWidth / img.naturalHeight;
+        var coverWidth = vh * ratio; // width needed to cover the full viewport height
+        var targetWidth = Math.max(coverWidth, vw) * PAN_FACTOR;
+        img.style.width = targetWidth + 'px';
+        img.style.height = 'auto';
+        overflowX = Math.max(0, targetWidth - vw);
+      }
 
       function pan() {
         var docMax = document.documentElement.scrollHeight - window.innerHeight;
         var progress = docMax > 0 ? Math.min(1, Math.max(0, window.scrollY / docMax)) : 0;
-        var overflow = Math.max(0, img.offsetWidth - window.innerWidth);
-        img.style.transform = 'translateX(' + (-progress * overflow) + 'px)';
+        img.style.transform = 'translateY(-50%) translateX(' + (-progress * overflowX) + 'px)';
       }
 
-      window.addEventListener('scroll', pan, { passive: true });
-      window.addEventListener('resize', pan);
-
-      if (img.complete) {
+      function loop() {
         pan();
+        requestAnimationFrame(loop); // polling scrollY per frame avoids iOS Safari's delayed/batched scroll events
+      }
+
+      function start() {
+        layout();
+        pan();
+        requestAnimationFrame(loop);
+      }
+
+      window.addEventListener('resize', layout);
+
+      if (img.complete && img.naturalWidth) {
+        start();
       } else {
-        img.addEventListener('load', pan, { once: true });
+        img.addEventListener('load', start, { once: true });
       }
     })();
   </script>
